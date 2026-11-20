@@ -1,0 +1,9 @@
+cluster.name: "docker-cluster"
+node.name: "es-warm"
+node.roles: [ data_warm, data_content ]
+network.host: 0.0.0.0
+http.port: 9200
+discovery.seed_hosts: ["es-hot", "es-warm"]
+
+xpack.security.enabled: false
+xpack.security.enrollment.enabled: false

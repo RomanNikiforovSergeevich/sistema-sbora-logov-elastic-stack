@@ -1,0 +1,113 @@
+services:
+  es-hot:
+    build: ./elasticsearch/es-hot
+    container_name: es-hot
+    user: root
+    environment:
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    volumes:
+      - type: tmpfs
+        target: /usr/share/elasticsearch/config
+        tmpfs:
+          size: 104857600
+      - type: tmpfs
+        target: /usr/share/elasticsearch/data
+        tmpfs:
+          size: 1073741824
+    entrypoint: >
+      /bin/sh -c "
+      cp -r /tmp/es-config/. /usr/share/elasticsearch/config/ &&
+      chown -R elasticsearch:elasticsearch /usr/share/elasticsearch/config &&
+      exec chroot --userspec=1000:0 / /usr/share/elasticsearch/bin/elasticsearch
+      "
+    ports:
+      - "9200:9200"
+    networks:
+      - elk
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+
+  es-warm:
+    build: ./elasticsearch/es-warm
+    container_name: es-warm
+    user: root
+    environment:
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    volumes:
+      - type: tmpfs
+        target: /usr/share/elasticsearch/config
+        tmpfs:
+          size: 104857600
+      - type: tmpfs
+        target: /usr/share/elasticsearch/data
+        tmpfs:
+          size: 1073741824
+    entrypoint: >
+      /bin/sh -c "
+      cp -r /tmp/es-config/. /usr/share/elasticsearch/config/ &&
+      chown -R elasticsearch:elasticsearch /usr/share/elasticsearch/config &&
+      exec chroot --userspec=1000:0 / /usr/share/elasticsearch/bin/elasticsearch
+      "
+    networks:
+      - elk
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.13.4
+    container_name: logstash
+    volumes:
+      - ./logstash/pipeline:/usr/share/logstash/pipeline:ro
+    ports:
+      - "5000:5000"
+      - "5044:5044"
+    networks:
+      - elk
+    depends_on:
+      - es-hot
+      - es-warm
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.13.4
+    container_name: kibana
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://es-hot:9200
+    networks:
+      - elk
+    depends_on:
+      - es-hot
+
+  filebeat:
+    build: ./filebeat
+    container_name: filebeat
+    user: root
+    command: ["filebeat", "-e", "--strict.perms=false"]
+    volumes:
+      - /mnt/Data/docker-storage/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - filebeat-data:/usr/share/filebeat/data
+    networks:
+      - elk
+    depends_on:
+      - logstash
+
+  dummy-app:
+    build: ./dummy-app
+    container_name: dummy-app
+    networks:
+      - elk
+    profiles:
+      - dummy
+
+volumes:
+  filebeat-data:
+
+networks:
+  elk:
+    driver: bridge

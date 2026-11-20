@@ -1,0 +1,11 @@
+cluster.name: "docker-cluster"
+node.name: "es-hot"
+node.roles: [ master, data_hot, data_content, ingest ]
+network.host: 0.0.0.0
+http.port: 9200
+discovery.seed_hosts: ["es-hot", "es-warm"]
+cluster.initial_master_nodes: ["es-hot"]
+
+# Отключаем security для учебной среды, чтобы не настраивать сертификаты
+xpack.security.enabled: false
+xpack.security.enrollment.enabled: false
